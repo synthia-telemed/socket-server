@@ -1,6 +1,10 @@
 import express from 'express'
 import http from 'http'
 import { Server } from 'socket.io'
+import { parseENV } from './env'
+import { RedisClient } from './redis'
+
+const env = parseENV()
 
 const app = express()
 const server = http.createServer(app)
@@ -13,6 +17,7 @@ app.get('/healthcheck', (req, res) => {
 		timestamp: new Date().toISOString(),
 	})
 })
+const redis = new RedisClient(env.RedisHost, env.Port, env.RedisUsername, env.RedisPassword)
 
 server.listen(PORT, () => {
 	console.log(`Server is running on port ${PORT}`)
