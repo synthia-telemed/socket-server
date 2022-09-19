@@ -13,6 +13,7 @@ const io = new Server(server, {
 	cors: {
 		origin: ['localhost:3000'],
 		credentials: true,
+		allowedHeaders: ['Authorization', 'Accept'],
 	},
 })
 const PORT = 3000 || process.env.PORT
