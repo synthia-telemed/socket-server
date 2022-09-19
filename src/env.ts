@@ -17,8 +17,8 @@ export const parseENV = (): ENV => {
 			PORT: joi.number().default(3000),
 			REDIS_HOST: joi.string().required(),
 			REDIS_PORT: joi.number().default(6379),
-			REDIS_USERNAME: joi.string().optional().default(''),
-			REDIS_PASSWORD: joi.string().optional().default(''),
+			REDIS_USERNAME: joi.string().default(() => undefined),
+			REDIS_PASSWORD: joi.string().default(() => undefined),
 		})
 		.unknown()
 

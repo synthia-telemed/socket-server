@@ -12,7 +12,7 @@ enum RoomInfoField {
 
 export class RedisClient {
 	private readonly client: Redis
-	constructor(host: string, port: number, username: string, password: string) {
+	constructor(host: string, port: number, username?: string, password?: string) {
 		this.client = new Redis({ host, username, password, port })
 	}
 
