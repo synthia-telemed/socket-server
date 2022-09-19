@@ -5,7 +5,7 @@ import { parseENV } from './env'
 import { RedisClient } from './redis'
 
 const env = parseENV()
-const redis = new RedisClient(env.RedisHost, env.Port, env.RedisUsername, env.RedisPassword)
+const redis = new RedisClient(env.RedisHost, env.RedisPort, env.RedisUsername, env.RedisPassword)
 
 const app = express()
 const server = http.createServer(app)
