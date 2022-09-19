@@ -2,7 +2,7 @@ import express from 'express'
 import http from 'http'
 import { Server } from 'socket.io'
 import { parseENV } from './env'
-import { RedisClient } from './redis'
+import { RedisClient } from './redis/redis'
 
 const env = parseENV()
 const redis = new RedisClient(env.RedisHost, env.RedisPort, env.RedisUsername, env.RedisPassword)
