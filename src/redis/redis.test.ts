@@ -47,6 +47,14 @@ describe('redis suite', () => {
 			)
 			expect(retrievedVal).toEqual(val)
 		})
+		it('should return null when not found', async () => {
+			const retrievedVal = await redisClient.getRoomInfo(
+				nanoid(),
+				RoomInfoField.DOCTOR_ID,
+				RoomInfoField.DOCTOR_SOCKET_ID
+			)
+			expect(retrievedVal).toEqual([null, null])
+		})
 	})
 
 	it('should set socket client info', async () => {
@@ -72,6 +80,10 @@ describe('redis suite', () => {
 		it('should get socket client info', async () => {
 			const retrievedInfo = await redisClient.getSocketClientInfo(socketID)
 			expect(retrievedInfo).toEqual(info)
+		})
+		it('should get null when not found', async () => {
+			const retrievedInfo = await redisClient.getSocketClientInfo(nanoid())
+			expect(retrievedInfo).toBeNull()
 		})
 	})
 })
