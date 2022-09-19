@@ -24,9 +24,9 @@ export enum SocketClientInfoField {
 	ROOM_ID = 'RoomID',
 }
 export interface SocketClientInfo {
-	userID: string | null
-	userRole: string | null
-	roomID: string | null
+	UserID: string | null
+	UserRole: string | null
+	RoomID: string | null
 }
 
 export class RedisClient {
@@ -63,9 +63,9 @@ export class RedisClient {
 		)
 		if (this.isAllEmpty(res)) return null
 		return {
-			userID: res[0],
-			userRole: res[1],
-			roomID: res[2],
+			UserID: res[0],
+			UserRole: res[1],
+			RoomID: res[2],
 		}
 	}
 
