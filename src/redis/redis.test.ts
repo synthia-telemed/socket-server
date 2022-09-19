@@ -111,6 +111,38 @@ describe('redis suite', () => {
 			expect(retrievedInfo).toBeNull()
 		})
 	})
+
+	describe('delete socketClientInfo', () => {
+		let socketID: string
+		beforeEach(async () => {
+			socketID = nanoid()
+			await client.hset(`socket:${socketID}`, generateSocketClientInfo())
+		})
+		it('should delete socketClientInfo', async () => {
+			await redisClient.deleteSocketClientInfo(socketID)
+			const vals = await client.hmget(
+				`socket:${socketID}`,
+				SocketClientInfoField.ROOM_ID,
+				SocketClientInfoField.USER_ID,
+				SocketClientInfoField.USER_ROLE
+			)
+			expect(vals.every(v => !v)).toBeTruthy()
+		})
+	})
+
+	describe('delete RoomInfo field', () => {
+		let roomID: string,
+			delKey = RoomInfoField.DOCTOR_SOCKET_ID
+		beforeEach(async () => {
+			roomID = nanoid()
+			await client.hset(`room:${roomID}`, { [delKey]: nanoid() })
+		})
+		it('should delete field in RoomInfo', async () => {
+			await redisClient.deleteRoomInfoField(roomID, delKey)
+			const exist = await client.hexists(`room:${roomID}`, delKey)
+			expect(exist).toBeFalsy()
+		})
+	})
 })
 
 function generateSocketClientInfo(): SocketClientInfo {

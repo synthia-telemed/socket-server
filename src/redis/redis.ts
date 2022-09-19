@@ -47,6 +47,10 @@ export class RedisClient {
 	async getRoomInfo(roomID: string, ...fields: RoomInfoField[]): Promise<(string | null)[]> {
 		return this.client.hmget(this.roomInfoKey(roomID), ...fields)
 	}
+	async deleteRoomInfoField(roomID: string, field: RoomInfoField): Promise<void> {
+		await this.client.hdel(this.roomInfoKey(roomID), field)
+	}
+
 	async isBothPeersJoined(roomID: string): Promise<boolean> {
 		const key = this.roomInfoKey(roomID)
 		const result = await Promise.all([
@@ -75,6 +79,9 @@ export class RedisClient {
 			UserRole: res[1],
 			RoomID: res[2],
 		}
+	}
+	async deleteSocketClientInfo(socketID: string): Promise<void> {
+		await this.client.del(this.socketClientInfoKey(socketID))
 	}
 
 	private isAllEmpty(arr: Array<any>): boolean {
