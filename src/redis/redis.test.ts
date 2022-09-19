@@ -57,6 +57,31 @@ describe('redis suite', () => {
 		})
 	})
 
+	describe('isBothPeersJoined function', () => {
+		it('should return true when both peer socket id are set', async () => {
+			const roomID = nanoid()
+			await client.hmset(`room:${roomID}`, {
+				[RoomInfoField.PATIENT_SOCKET_ID]: nanoid(),
+				[RoomInfoField.DOCTOR_SOCKET_ID]: nanoid(),
+			})
+			const isBoth = await redisClient.isBothPeersJoined(roomID)
+			expect(isBoth).toBeTruthy()
+		})
+		it('should return false when both only one peer socket id is set', async () => {
+			const roomID = nanoid()
+			await client.hmset(`room:${roomID}`, {
+				[RoomInfoField.PATIENT_SOCKET_ID]: nanoid(),
+			})
+			const isBoth = await redisClient.isBothPeersJoined(roomID)
+			expect(isBoth).toBeFalsy()
+		})
+		it('should return false when no peer socket is set', async () => {
+			const roomID = nanoid()
+			const isBoth = await redisClient.isBothPeersJoined(roomID)
+			expect(isBoth).toBeFalsy()
+		})
+	})
+
 	it('should set socket client info', async () => {
 		const socketID = nanoid()
 		const info: SocketClientInfo = generateSocketClientInfo()

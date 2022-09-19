@@ -47,6 +47,14 @@ export class RedisClient {
 	async getRoomInfo(roomID: string, ...fields: RoomInfoField[]): Promise<(string | null)[]> {
 		return this.client.hmget(this.roomInfoKey(roomID), ...fields)
 	}
+	async isBothPeersJoined(roomID: string): Promise<boolean> {
+		const key = this.roomInfoKey(roomID)
+		const result = await Promise.all([
+			this.client.hexists(key, RoomInfoField.PATIENT_SOCKET_ID),
+			this.client.hexists(key, RoomInfoField.DOCTOR_SOCKET_ID),
+		])
+		return !result.some(v => v === 0)
+	}
 
 	private socketClientInfoKey(socketID: string): string {
 		return `socket:${socketID}`
