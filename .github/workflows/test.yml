@@ -1,0 +1,22 @@
+name: CI
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "*" ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Node.js environment
+        uses: actions/setup-node@v3.4.1
+        with:
+          node-version: 16.17.0
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Install dependency
+        run: pnpm install
+      - name: Run test
+        run: pnpm run test
