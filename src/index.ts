@@ -12,9 +12,9 @@ const heimdallClient = new HeimdallClient(env.HeimdallEndpoint)
 const app = express()
 const server = http.createServer(app)
 const io = new Server(server, {
-	cors: {
-		origin: ['http://localhost:3000'],
-	},
+	// cors: {
+	// 	origin: ['http://localhost:3000', 'http://localhost:8080'],
+	// },
 })
 
 app.get('/healthcheck', (req, res) => {
@@ -25,7 +25,7 @@ app.get('/healthcheck', (req, res) => {
 })
 
 io.use(async (socket, next) => {
-	const token = socket.handshake.auth.token
+	const { token } = socket.handshake.auth
 	if (!token) next(new Error('Auth token is not found'))
 	try {
 		const userInfo = await heimdallClient.parseToken(token)
@@ -57,17 +57,18 @@ io.on('connection', socket => {
 		const [expectedUserID] = await redis.getRoomInfo(roomID, userIdField)
 		if (expectedUserID && expectedUserID != socketClientInfo.UserID) return socket.emit('error', 'Forbidden')
 
+		const userSocketIDField = getUserSocketIDField(userIdField)
 		await Promise.all([
 			socket.join(roomID),
 			redis.setSocketClientInfo(socket.id, { ...socketClientInfo, RoomID: roomID }),
-			redis.setRoomInfo(roomID, getUserSocketIDField(userIdField), socket.id),
+			redis.setRoomInfo(roomID, userSocketIDField, socket.id),
 		])
 
-		const isBothPeerJoined = await redis.isBothPeersJoined(roomID)
-		if (isBothPeerJoined) {
-			// Signal start-peering
+		const otherUserSocketIDField = getOtherUserSocketIDField(userSocketIDField)
+		const [otherUserSocketID] = await redis.getRoomInfo(roomID, otherUserSocketIDField)
+		if (otherUserSocketID) {
 			const isInitiator = getRandomBoolean()
-			socket.to(roomID).emit('start-peering', isInitiator)
+			io.to(otherUserSocketID).emit('start-peering', isInitiator)
 			socket.emit('start-peering', !isInitiator)
 		}
 	})
@@ -89,19 +90,24 @@ io.on('connection', socket => {
 	})
 })
 
-const getUserIDField = (role: string): RoomInfoField.PATIENT_ID | RoomInfoField.DOCTOR_ID => {
+type UserIDField = RoomInfoField.PATIENT_ID | RoomInfoField.DOCTOR_ID
+const getUserIDField = (role: string): UserIDField => {
 	if (role.toLowerCase() === 'patient') return RoomInfoField.PATIENT_ID
 	return RoomInfoField.DOCTOR_ID
 }
 
-const getUserSocketIDField = (
-	userIDField: RoomInfoField.PATIENT_ID | RoomInfoField.DOCTOR_ID
-): RoomInfoField.PATIENT_SOCKET_ID | RoomInfoField.DOCTOR_SOCKET_ID => {
-	if (userIDField === RoomInfoField.PATIENT_ID) return RoomInfoField.PATIENT_SOCKET_ID
-	return RoomInfoField.DOCTOR_SOCKET_ID
+type UserSocketIDField = RoomInfoField.PATIENT_SOCKET_ID | RoomInfoField.DOCTOR_SOCKET_ID
+const getUserSocketIDField = (userIDField: UserIDField): UserSocketIDField => {
+	return userIDField === RoomInfoField.PATIENT_ID ? RoomInfoField.PATIENT_SOCKET_ID : RoomInfoField.DOCTOR_SOCKET_ID
 }
 
-const getRandomBoolean = (): boolean => Math.random() < 0.5
+const getOtherUserSocketIDField = (userSocketIDField: UserSocketIDField): UserSocketIDField => {
+	return userSocketIDField === RoomInfoField.PATIENT_SOCKET_ID
+		? RoomInfoField.DOCTOR_SOCKET_ID
+		: RoomInfoField.PATIENT_SOCKET_ID
+}
+
+const getRandomBoolean = (): boolean => Math.random() > 0.5
 
 server.listen(env.Port, () => {
 	console.log(`Server is running on port ${env.Port}`)
