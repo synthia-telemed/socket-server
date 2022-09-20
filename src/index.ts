@@ -71,6 +71,22 @@ io.on('connection', socket => {
 			socket.emit('start-peering', !isInitiator)
 		}
 	})
+
+	socket.on('signal', async (data: any) => {
+		const socketClientInfo = await redis.getSocketClientInfo(socket.id)
+		if (!socketClientInfo || !socketClientInfo.RoomID) return socket.emit('error', 'Socket info not found')
+		socket.to(socketClientInfo.RoomID).emit('signal', data)
+	})
+
+	socket.on('close-room', async () => {
+		const socketClientInfo = await redis.getSocketClientInfo(socket.id)
+		if (!socketClientInfo || !socketClientInfo.RoomID || !socketClientInfo.UserRole)
+			return socket.emit('error', 'Socket info not found')
+		if (socketClientInfo.UserRole.toLowerCase() != 'doctor')
+			return socket.emit('error', 'Only doctor can close the room')
+		socket.to(socketClientInfo.RoomID).emit('room-closed')
+		io.in(socketClientInfo.RoomID).disconnectSockets(true)
+	})
 })
 
 const getUserIDField = (role: string): RoomInfoField.PATIENT_ID | RoomInfoField.DOCTOR_ID => {
