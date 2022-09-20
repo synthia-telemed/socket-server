@@ -1,22 +1,21 @@
 import express from 'express'
 import http from 'http'
 import { Server } from 'socket.io'
+import { HeimdallClient, UserInfo } from './api/heimdall'
 import { parseENV } from './env'
-import { RedisClient } from './redis'
+import { RedisClient, RoomInfoField, SocketClientInfoField } from './redis/redis'
 
 const env = parseENV()
 const redis = new RedisClient(env.RedisHost, env.RedisPort, env.RedisUsername, env.RedisPassword)
+const heimdallClient = new HeimdallClient(env.HeimdallEndpoint)
 
 const app = express()
 const server = http.createServer(app)
 const io = new Server(server, {
-	cors: {
-		origin: ['localhost:3000'],
-		credentials: true,
-		allowedHeaders: ['Authorization', 'Accept'],
-	},
+	// cors: {
+	// 	origin: ['http://localhost:3000', 'http://localhost:8080'],
+	// },
 })
-const PORT = 3000 || process.env.PORT
 
 app.get('/healthcheck', (req, res) => {
 	res.send({
@@ -25,14 +24,91 @@ app.get('/healthcheck', (req, res) => {
 	})
 })
 
-io.on('connection', socket => {
-	console.log(socket.id, 'handshake header', socket.handshake.headers)
+io.use(async (socket, next) => {
+	const { token } = socket.handshake.auth
+	if (!token) next(new Error('Auth token is not found'))
+	try {
+		const userInfo = await heimdallClient.parseToken(token)
+		await redis.setSocketClientInfo(socket.id, { RoomID: '', UserID: userInfo.userID, UserRole: userInfo.role })
+	} catch (err) {
+		next(new Error('Token authentication failed'))
+	}
+	next()
+})
 
-	socket.on('join-room', () => {
-		console.log(socket.id, 'on event header', socket.request.headers)
+io.on('connection', socket => {
+	socket.on('disconnect', async () => {
+		const socketClientInfo = await redis.getSocketClientInfo(socket.id)
+		if (!socketClientInfo || !socketClientInfo.UserRole) return socket.emit('error', 'Socket info not found')
+		const ops = [redis.deleteSocketClientInfo(socket.id)]
+		if (socketClientInfo.RoomID) {
+			const userSocketIDField = getUserSocketIDField(getUserIDField(socketClientInfo.UserRole))
+			ops.push(redis.deleteRoomInfoField(socketClientInfo.RoomID, userSocketIDField))
+		}
+		await Promise.all(ops)
+	})
+	socket.on('join-room', async (roomID: string) => {
+		// Get socket client information
+		const socketClientInfo = await redis.getSocketClientInfo(socket.id)
+		if (!socketClientInfo || !socketClientInfo.UserRole || !socketClientInfo.UserID)
+			return socket.emit('error', 'Socket info not found')
+
+		const userIdField = getUserIDField(socketClientInfo.UserRole)
+		const [expectedUserID] = await redis.getRoomInfo(roomID, userIdField)
+		if (expectedUserID && expectedUserID != socketClientInfo.UserID) return socket.emit('error', 'Forbidden')
+
+		const userSocketIDField = getUserSocketIDField(userIdField)
+		await Promise.all([
+			socket.join(roomID),
+			redis.setSocketClientInfo(socket.id, { ...socketClientInfo, RoomID: roomID }),
+			redis.setRoomInfo(roomID, userSocketIDField, socket.id),
+		])
+
+		const otherUserSocketIDField = getOtherUserSocketIDField(userSocketIDField)
+		const [otherUserSocketID] = await redis.getRoomInfo(roomID, otherUserSocketIDField)
+		if (otherUserSocketID) {
+			const isInitiator = getRandomBoolean()
+			io.to(otherUserSocketID).emit('start-peering', isInitiator)
+			socket.emit('start-peering', !isInitiator)
+		}
+	})
+
+	socket.on('signal', async (data: any) => {
+		const socketClientInfo = await redis.getSocketClientInfo(socket.id)
+		if (!socketClientInfo || !socketClientInfo.RoomID) return socket.emit('error', 'Socket info not found')
+		socket.to(socketClientInfo.RoomID).emit('signal', data)
+	})
+
+	socket.on('close-room', async () => {
+		const socketClientInfo = await redis.getSocketClientInfo(socket.id)
+		if (!socketClientInfo || !socketClientInfo.RoomID || !socketClientInfo.UserRole)
+			return socket.emit('error', 'Socket info not found')
+		if (socketClientInfo.UserRole.toLowerCase() != 'doctor')
+			return socket.emit('error', 'Only doctor can close the room')
+		socket.to(socketClientInfo.RoomID).emit('room-closed')
+		io.in(socketClientInfo.RoomID).disconnectSockets(true)
 	})
 })
 
-server.listen(PORT, () => {
-	console.log(`Server is running on port ${PORT}`)
+type UserIDField = RoomInfoField.PATIENT_ID | RoomInfoField.DOCTOR_ID
+const getUserIDField = (role: string): UserIDField => {
+	if (role.toLowerCase() === 'patient') return RoomInfoField.PATIENT_ID
+	return RoomInfoField.DOCTOR_ID
+}
+
+type UserSocketIDField = RoomInfoField.PATIENT_SOCKET_ID | RoomInfoField.DOCTOR_SOCKET_ID
+const getUserSocketIDField = (userIDField: UserIDField): UserSocketIDField => {
+	return userIDField === RoomInfoField.PATIENT_ID ? RoomInfoField.PATIENT_SOCKET_ID : RoomInfoField.DOCTOR_SOCKET_ID
+}
+
+const getOtherUserSocketIDField = (userSocketIDField: UserSocketIDField): UserSocketIDField => {
+	return userSocketIDField === RoomInfoField.PATIENT_SOCKET_ID
+		? RoomInfoField.DOCTOR_SOCKET_ID
+		: RoomInfoField.PATIENT_SOCKET_ID
+}
+
+const getRandomBoolean = (): boolean => Math.random() > 0.5
+
+server.listen(env.Port, () => {
+	console.log(`Server is running on port ${env.Port}`)
 })

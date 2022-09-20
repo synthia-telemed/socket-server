@@ -7,6 +7,7 @@ interface ENV {
 	RedisPort: number
 	RedisUsername: string
 	RedisPassword: string
+	HeimdallEndpoint: string
 }
 
 export const parseENV = (): ENV => {
@@ -19,6 +20,7 @@ export const parseENV = (): ENV => {
 			REDIS_PORT: joi.number().default(6379),
 			REDIS_USERNAME: joi.string().default(() => undefined),
 			REDIS_PASSWORD: joi.string().default(() => undefined),
+			HEIMDALL_ENDPOINT: joi.string().required(),
 		})
 		.unknown()
 
@@ -32,5 +34,6 @@ export const parseENV = (): ENV => {
 		RedisPort: envVars.REDIS_PORT,
 		RedisUsername: envVars.REDIS_USERNAME,
 		RedisPassword: envVars.REDIS_PASSWORD,
+		HeimdallEndpoint: envVars.HEIMDALL_ENDPOINT,
 	}
 }
