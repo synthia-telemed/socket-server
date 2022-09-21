@@ -13,7 +13,12 @@ const app = express()
 const server = http.createServer(app)
 const io = new Server(server, {
 	// cors: {
-	// 	origin: ['http://localhost:3000', 'http://localhost:8080'],
+	// 	origin: [
+	// 		'http://localhost:3000',
+	// 		'http://localhost:8080',
+	// 		'https://synthia-doctor.loca.lt',
+	// 		'https://synthia-patient.loca.lt',
+	// 	],
 	// },
 })
 
@@ -31,6 +36,7 @@ io.use(async (socket, next) => {
 		const userInfo = await heimdallClient.parseToken(token)
 		await redis.setSocketClientInfo(socket.id, { RoomID: '', UserID: userInfo.userID, UserRole: userInfo.role })
 	} catch (err) {
+		console.error(err)
 		next(new Error('Token authentication failed'))
 	}
 	next()
