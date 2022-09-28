@@ -95,7 +95,12 @@ io.on('connection', socket => {
 			return socket.emit('error', 'Socket info not found')
 		if (socketClientInfo.UserRole.toLowerCase() != 'doctor')
 			return socket.emit('error', 'Only doctor can close the room')
-		socket.to(socketClientInfo.RoomID).emit('room-closed')
+		const [startedTime] = await redis.getRoomInfo(socketClientInfo.RoomID, RoomInfoField.STARTED_AT)
+		if (!startedTime) return socket.emit('error', 'Room is not started')
+		const duration = dayjs.utc().diff(dayjs.utc(startedTime), 'second')
+		await redis.setRoomInfo(socketClientInfo.RoomID, RoomInfoField.DURATION, duration.toString())
+
+		io.in(socketClientInfo.RoomID).emit('room-closed', duration)
 		io.in(socketClientInfo.RoomID).disconnectSockets(true)
 	})
 })
