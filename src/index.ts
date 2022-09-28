@@ -1,9 +1,12 @@
 import express from 'express'
 import http from 'http'
 import { Server } from 'socket.io'
+import dayjs from 'dayjs'
+import utc from 'dayjs/plugin/utc'
 import { HeimdallClient, UserInfo } from './api/heimdall'
 import { parseENV } from './env'
 import { RedisClient, RoomInfoField, SocketClientInfoField } from './redis/redis'
+dayjs.extend(utc)
 
 const env = parseENV()
 const redis = new RedisClient(env.RedisHost, env.RedisPort, env.RedisUsername, env.RedisPassword)
@@ -73,6 +76,7 @@ io.on('connection', socket => {
 		const otherUserSocketIDField = getOtherUserSocketIDField(userSocketIDField)
 		const [otherUserSocketID] = await redis.getRoomInfo(roomID, otherUserSocketIDField)
 		if (otherUserSocketID) {
+			await redis.setRoomInfo(roomID, RoomInfoField.STARTED_AT, dayjs.utc().toISOString())
 			const isInitiator = getRandomBoolean()
 			io.to(otherUserSocketID).emit('start-peering', isInitiator)
 			socket.emit('start-peering', !isInitiator)
