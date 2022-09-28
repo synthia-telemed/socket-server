@@ -6,6 +6,7 @@ export enum RoomInfoField {
 	DOCTOR_ID = 'DoctorID',
 	APPOINTMENT_ID = 'AppointmentID',
 	STARTED_AT = 'StartedAt',
+	DURATION = 'Duration',
 	PATIENT_SOCKET_ID = 'PatientSocketID',
 	DOCTOR_SOCKET_ID = 'DoctorSocketID',
 }

@@ -7,6 +7,7 @@ specifiers:
   '@typescript-eslint/eslint-plugin': ^5.37.0
   '@typescript-eslint/parser': ^5.37.0
   axios: ^0.27.2
+  dayjs: ^1.11.5
   dotenv: ^16.0.2
   eslint: ^8.23.1
   eslint-plugin-prettier: ^4.2.1
@@ -25,6 +26,7 @@ specifiers:
 
 dependencies:
   axios: 0.27.2
+  dayjs: 1.11.5
   dotenv: 16.0.2
   express: 4.18.1
   ioredis: 5.2.3
@@ -1694,6 +1696,10 @@ packages:
       shebang-command: 2.0.0
       which: 2.0.2
     dev: true
+
+  /dayjs/1.11.5:
+    resolution: {integrity: sha512-CAdX5Q3YW3Gclyo5Vpqkgpj8fSdLQcRuzfX6mC6Phy0nfJ0eGYOeS7m4mt2plDWLAtA4TqTakvbboHvUxfe4iA==}
+    dev: false
 
   /debug/2.6.9:
     resolution: {integrity: sha512-bC7ElrdJaJnPbAP+1EotYvqZsb3ecl5wi6Bfi6BJTUcNowp6cvspg0jXznRTKDjm/E7AdgFBVeAPVMNcKGsHMA==}
