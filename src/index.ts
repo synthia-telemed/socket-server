@@ -53,6 +53,7 @@ io.on('connection', socket => {
 		if (socketClientInfo.RoomID) {
 			const userSocketIDField = getUserSocketIDField(getUserIDField(socketClientInfo.UserRole))
 			ops.push(redis.deleteRoomInfoField(socketClientInfo.RoomID, userSocketIDField))
+			socket.to(socketClientInfo.RoomID).emit('user-left')
 		}
 		await Promise.all(ops)
 	})
