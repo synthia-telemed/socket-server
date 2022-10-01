@@ -15,14 +15,10 @@ const heimdallClient = new HeimdallClient(env.HeimdallEndpoint)
 const app = express()
 const server = http.createServer(app)
 const io = new Server(server, {
-	// cors: {
-	// 	origin: [
-	// 		'http://localhost:3000',
-	// 		'http://localhost:8080',
-	// 		'https://synthia-doctor.loca.lt',
-	// 		'https://synthia-patient.loca.lt',
-	// 	],
-	// },
+	cors: {
+		origin: '*',
+	},
+	transports: ['websocket'],
 })
 
 app.get('/healthcheck', (req, res) => {
@@ -75,9 +71,13 @@ io.on('connection', socket => {
 		])
 
 		const otherUserSocketIDField = getOtherUserSocketIDField(userSocketIDField)
-		const [otherUserSocketID] = await redis.getRoomInfo(roomID, otherUserSocketIDField)
+		const [otherUserSocketID, startedAt] = await redis.getRoomInfo(
+			roomID,
+			otherUserSocketIDField,
+			RoomInfoField.STARTED_AT
+		)
 		if (otherUserSocketID) {
-			await redis.setRoomInfo(roomID, RoomInfoField.STARTED_AT, dayjs.utc().toISOString())
+			if (!startedAt) await redis.setRoomInfo(roomID, RoomInfoField.STARTED_AT, dayjs.utc().toISOString())
 			const isInitiator = getRandomBoolean()
 			io.to(otherUserSocketID).emit('start-peering', isInitiator)
 			socket.emit('start-peering', !isInitiator)
